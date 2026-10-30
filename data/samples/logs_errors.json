@@ -1,0 +1,206 @@
+{
+    "timestamp": "2026-10-27T13:00:00+00:00",
+    "host": "prod-1",
+    "system": "Linux",
+    "search_paths": [
+      "/var/log",
+      "./logs"
+    ],
+    "hours_searched": 24,
+    "filter_level": null,
+    "filter_keyword": null,
+    "summary": {
+      "total_entries": 24,
+      "files_with_logs": 2,
+      "files_scanned": 9,
+      "by_level": {
+        "INFO": 7,
+        "WARNING": 3,
+        "ERROR": 14
+      },
+      "errors": 14,
+      "warnings": 3
+    },
+    "files": [
+      {
+        "path": "/var/log/agent-app/app.log",
+        "entries": 21,
+        "modified": "2026-10-27T13:00:00+00:00"
+      },
+      {
+        "path": "/var/log/syslog",
+        "entries": 3,
+        "modified": "2026-10-27T13:00:00+00:00"
+      }
+    ],
+    "logs": [
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 480,
+        "timestamp": "2026-10-27T12:58:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:58:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a000f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 479,
+        "timestamp": "2026-10-27T12:54:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:54:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a001f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 478,
+        "timestamp": "2026-10-27T12:50:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:50:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a002f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 477,
+        "timestamp": "2026-10-27T12:46:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:46:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a003f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 476,
+        "timestamp": "2026-10-27T12:42:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:42:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a004f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 475,
+        "timestamp": "2026-10-27T12:38:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:38:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a005f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 474,
+        "timestamp": "2026-10-27T12:34:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:34:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a006f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 473,
+        "timestamp": "2026-10-27T12:30:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:30:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a007f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 420,
+        "timestamp": "2026-10-27T12:30:00+00:00",
+        "level": "WARNING",
+        "message": "2026-10-27T12:30:00 WARNING validator rejected output: missing field 'defenses'"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 472,
+        "timestamp": "2026-10-27T12:26:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:26:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a008f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 419,
+        "timestamp": "2026-10-27T12:23:00+00:00",
+        "level": "WARNING",
+        "message": "2026-10-27T12:23:00 WARNING validator rejected output: missing field 'defenses'"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 471,
+        "timestamp": "2026-10-27T12:22:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:22:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a009f2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 400,
+        "timestamp": "2026-10-27T12:20:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:20:00 INFO served request in 380ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 470,
+        "timestamp": "2026-10-27T12:18:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:18:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a00af2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 418,
+        "timestamp": "2026-10-27T12:16:00+00:00",
+        "level": "WARNING",
+        "message": "2026-10-27T12:16:00 WARNING validator rejected output: missing field 'defenses'"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 399,
+        "timestamp": "2026-10-27T12:15:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:15:00 INFO served request in 387ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 469,
+        "timestamp": "2026-10-27T12:14:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:14:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a00bf2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 468,
+        "timestamp": "2026-10-27T12:10:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:10:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a00cf2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 398,
+        "timestamp": "2026-10-27T12:10:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:10:00 INFO served request in 394ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 467,
+        "timestamp": "2026-10-27T12:06:00+00:00",
+        "level": "ERROR",
+        "message": "2026-10-27T12:06:00 ERROR gateway ReadTimeout: model gateway did not respond within 30s (attempt 3/3) req_id=a00df2"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 397,
+        "timestamp": "2026-10-27T12:05:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:05:00 INFO served request in 401ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 396,
+        "timestamp": "2026-10-27T12:00:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:00:00 INFO served request in 408ms"
+      },
+      {
+        "file": "/var/log/syslog",
+        "line": 9120,
+        "timestamp": "2026-10-27T12:00:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:00:00 INFO CRON[2231]: (root) CMD (python /opt/foreman/chip.py --output /opt/foreman/data/inbox/health.json)"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 395,
+        "timestamp": "2026-10-27T11:55:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:55:00 INFO served request in 415ms"
+      }
+    ]
+  }

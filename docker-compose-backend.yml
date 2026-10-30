@@ -1,0 +1,67 @@
+services:
+  db:
+    image: mongo:7
+    container_name: health_db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-health_monitor}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  scheduler:
+    build: .
+    container_name: health_scheduler
+    restart: unless-stopped
+    command: ["/bin/sh", "/app/scheduler-entrypoint.sh"]
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+      TZ: ${TZ:-UTC}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./output:/app/output
+      - ./muse-config-docker:/root/.config/muse
+      - /var/log:/host-logs:ro
+
+  # Manual one-off runs only - NOT used by cron
+  health-checker:
+    build: .
+    command: ["python", "chip.py", "--prompt", "system_health", "--timeout", "60", "--output", "/app/output/health.json"]
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./output:/app/output
+      - ./muse-config-docker:/root/.config/muse
+    profiles: ["jobs"]
+
+  log-collector:
+    build: .
+    command: ["python", "chuck.py", "--path", "/host-logs", "--hours", "24", "--output", "/app/output/logs.json"]
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./output:/app/output
+      - /var/log:/host-logs:ro
+    profiles: ["jobs"]
+
+volumes:
+  mongo_data:
+    name: health_mongo_data

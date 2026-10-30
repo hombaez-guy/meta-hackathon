@@ -20,6 +20,9 @@ from collections import Counter, deque
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+from mongo_store import store_logs
+
+
 # Common log locations by OS
 DEFAULT_PATHS = {
     "Darwin": ["/var/log", "~/Library/Logs", "/usr/local/var/log", "./logs", "."],
@@ -89,12 +92,15 @@ def find_log_files(paths, max_files=50):
         # rglob for nested logs, but don't go too deep in "." 
         pattern = "**/*" if str(path) not in [".", "./logs"] else "*"
         for candidate in path.glob(pattern):
-            if candidate.is_file() and (
-                candidate.suffix.lower() in LOG_EXTENSIONS or 
-                candidate.name.lower() in LOG_NAMES or
-                candidate.suffix == ".gz" and candidate.stem.endswith(".log")
-            ):
-                files.append(candidate)
+            try:
+                if candidate.is_file() and (
+                    candidate.suffix.lower() in LOG_EXTENSIONS or 
+                    candidate.name.lower() in LOG_NAMES or
+                    candidate.suffix == ".gz" and candidate.stem.endswith(".log")
+                ):
+                    files.append(candidate)
+            except (PermissionError, OSError):
+                continue
     
     # Sort by most recently modified first, dedupe
     unique = list(dict.fromkeys(files))
@@ -200,6 +206,9 @@ def main():
         max_lines_per_file=args.max_lines,
         include_null_timestamps=args.include_null_timestamps 
     )
+
+    # Store db
+    store_logs(result)
 
     # Returns the JSON object to stdout
     print(json.dumps(result, indent=2))

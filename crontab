@@ -1,0 +1,1 @@
+*/30 * * * * /bin/sh /app/run_all.sh >> /app/output/cron.log 2>&1

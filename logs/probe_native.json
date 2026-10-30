@@ -1,0 +1,6 @@
+{
+    "headline": "Disk is critical at 92.7% recurring, memory is stuck at 83.1%, and gateway timeouts hit 14 errors in 24h.",
+    "overall_status": "critical",
+    "summary": "Disk critical and recurring. Memory elevated and flat, not climbing. Gateway errors repeated above threshold. No applied fix in history to evaluate.",
+    "trend_note": "No metric moved more than 15 points since the previous report at 2026-10-28T01:42 (cpu 34.2%, memory 83.1%, disk 92.7% - all unchanged). Across the 3-report history window: memory 83.1% -> 83.0% -> 83.1% (flat, no climb, no recovery), disk 92.7% -> 80.9% -> 92.7% (back at critical), cpu 34.2% -> 10.7% -> 34.2%. Disk is already at critical; no growth-rate projection needed to act today, and no sustained >15-point jump is present in this window. Fixes in history are proposed or rejected only; none with state 'applied', so no applied fix has failed, but disk and memory symptoms persist unremediated. CPU 34.2% is below the 75% warning threshold - no finding. No service/process overlap can be checked: Chip supplied no top-process list and Chuck named no service process, only the model gateway dependency."
+    }

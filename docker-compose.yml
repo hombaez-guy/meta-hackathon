@@ -1,0 +1,104 @@
+services:
+  # ---- Foreman: Reviewer, Fixer, API, dashboard (Nik) ----
+  foreman:
+    build: .
+    container_name: foreman
+    restart: unless-stopped
+    env_file: .env                       # MODEL_API_KEY and the rest; MONGO_* below override
+    environment:
+      MONGO_URI: mongodb://db:27017      # service is named "db" below, not "mongo"
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+      FOREMAN_INPUT: ${FOREMAN_INPUT:-auto}            # auto = Mongo first, data/inbox files if Mongo is empty or down
+      FOREMAN_REVIEW_INTERVAL_MIN: "30"  # review on its own, matching the cron cadence. Set "1" for a compressed demo clock
+      TZ: ${TZ:-UTC}
+    ports: ["8000:8000"]
+    volumes:
+      - ./data/inbox:/app/data/inbox     # same folder the scheduler writes to
+      - ./data/reports:/app/data/reports
+      - ./logs:/app/logs
+      - ./prompts:/app/prompts           # edit the XML without rebuilding
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ---- Database ----
+  db:
+    image: mongo:7
+    container_name: health_db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-health_monitor}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ---- Chip + Chuck on a cron, every 30 min ----
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile-backend
+    container_name: health_scheduler
+    restart: unless-stopped
+    command: ["/bin/sh", "/app/scheduler-entrypoint.sh"]
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+      TZ: ${TZ:-UTC}
+    depends_on:
+      db:
+        condition: service_healthy
+    group_add:
+      - "80"
+    volumes:
+      - ./data/inbox:/app/data/inbox     # Chip and Chuck drop their JSON here
+      - ./output:/app/output
+      - ./muse-config-docker:/root/.config/muse
+      - /var/log/asl:/host-logs/asl:ro
+
+  # Manual one-off runs only 
+  health-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile-backend
+    command: ["python", "chip.py", "--prompt", "system_health", "--timeout", "60", "--output", "/app/data/inbox/health.json"]
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data/inbox:/app/data/inbox
+      - ./output:/app/output
+      - ./muse-config-docker:/root/.config/muse
+    profiles: ["jobs"]
+
+  log-collector:
+    build:
+      context: .
+      dockerfile: Dockerfile-backend
+    command: ["python", "chuck.py", "--path", "/host-logs", "--hours", "24", "--output", "/app/data/inbox/logs.json"]
+    environment:
+      MONGO_URI: mongodb://db:27017
+      MONGO_DB: ${MONGO_DB:-health_monitor}
+    depends_on:
+      db:
+        condition: service_healthy
+    group_add:
+      - "80"
+    volumes:
+      - ./data/inbox:/app/data/inbox
+      - ./output:/app/output
+      - /var/log/asl:/host-logs/asl:ro
+    profiles: ["jobs"]
+
+volumes:
+  mongo_data:
+    name: health_mongo_data

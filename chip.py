@@ -11,6 +11,9 @@ import platform
 import os
 from datetime import datetime, timezone
 
+from mongo_store import store_metrics, store_health_result
+
+
 PACKAGE_NAME = "muse"
 MODULE_NAME = "muse"
 
@@ -211,12 +214,19 @@ def main():
     if not is_installed("psutil"):
         install_package("psutil")
 
+    if not is_installed("pymongo"):
+            install_package("pymongo")
+
     if args.install_only:
         return
 
     # Collect + Build Prompt
     print("Collecting system health...")
     metrics = collect_system_health()
+
+    # Store metrics in DB
+    store_metrics(metrics)
+    
     prompt = PREPROGRAMMED_PROMPTS[args.prompt].format(metrics=json.dumps(metrics, indent=2))
 
     # Run Muse
@@ -225,10 +235,13 @@ def main():
         raw_output = run_muse(prompt, debug=args.debug, trust_workspace=args.trust_workspace, timeout=args.timeout)
         health_json = extract_json(raw_output)
         health_json["_source"] = "muse"
+        store_health_result(health_json, metrics=metrics)
     except Exception as e:
         print(f"Warning: {e}")
         print("Using local fallback instead - you will still get valid JSON.")
         health_json = fallback_health_json(metrics)
+        store_health_result(health_json, metrics=metrics)
+
 
 
     # Output

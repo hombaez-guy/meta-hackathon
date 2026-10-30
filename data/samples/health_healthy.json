@@ -1,0 +1,12 @@
+{
+    "status": "healthy",
+    "timestamp": "2026-10-27T13:00:00Z",
+    "summary": "CPU, memory and disk are all within normal range.",
+    "cpu_percent": 18.4,
+    "memory_percent": 52.1,
+    "disk_percent": 61.0,
+    "issues": [],
+    "recommendations": ["No action needed"],
+    "_source": "muse"
+  }
+  

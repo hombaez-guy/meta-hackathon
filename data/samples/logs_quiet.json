@@ -1,0 +1,122 @@
+{
+    "timestamp": "2026-10-27T13:00:00+00:00",
+    "host": "prod-1",
+    "system": "Linux",
+    "search_paths": [
+      "/var/log",
+      "./logs"
+    ],
+    "hours_searched": 24,
+    "filter_level": null,
+    "filter_keyword": null,
+    "summary": {
+      "total_entries": 12,
+      "files_with_logs": 2,
+      "files_scanned": 9,
+      "by_level": {
+        "INFO": 12,
+        "WARNING": 0,
+        "ERROR": 0
+      },
+      "errors": 0,
+      "warnings": 0
+    },
+    "files": [
+      {
+        "path": "/var/log/agent-app/app.log",
+        "entries": 9,
+        "modified": "2026-10-27T13:00:00+00:00"
+      },
+      {
+        "path": "/var/log/syslog",
+        "entries": 3,
+        "modified": "2026-10-27T13:00:00+00:00"
+      }
+    ],
+    "logs": [
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 400,
+        "timestamp": "2026-10-27T12:50:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:50:00 INFO served request in 310ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 399,
+        "timestamp": "2026-10-27T12:41:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:41:00 INFO served request in 314ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 398,
+        "timestamp": "2026-10-27T12:32:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:32:00 INFO served request in 318ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 397,
+        "timestamp": "2026-10-27T12:23:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:23:00 INFO served request in 322ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 396,
+        "timestamp": "2026-10-27T12:14:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:14:00 INFO served request in 326ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 395,
+        "timestamp": "2026-10-27T12:05:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T12:05:00 INFO served request in 330ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 394,
+        "timestamp": "2026-10-27T11:56:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:56:00 INFO served request in 334ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 393,
+        "timestamp": "2026-10-27T11:47:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:47:00 INFO served request in 338ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 392,
+        "timestamp": "2026-10-27T11:38:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:38:00 INFO served request in 342ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 391,
+        "timestamp": "2026-10-27T11:29:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:29:00 INFO served request in 346ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 390,
+        "timestamp": "2026-10-27T11:20:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:20:00 INFO served request in 350ms"
+      },
+      {
+        "file": "/var/log/agent-app/app.log",
+        "line": 389,
+        "timestamp": "2026-10-27T11:11:00+00:00",
+        "level": "INFO",
+        "message": "2026-10-27T11:11:00 INFO served request in 354ms"
+      }
+    ]
+  }

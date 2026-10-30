@@ -1,0 +1,47 @@
+FROM python:3.12-slim
+
+# bash + unzip are required by most install.sh scripts - sh/dash is not enough
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    procps \
+    coreutils \
+    ca-certificates \
+    curl \
+    bash \
+    unzip \
+    tar \
+    gzip \
+    git \
+    cron \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Make all RUN commands use bash with pipefail, so curl failures are not hidden
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+WORKDIR /app
+
+COPY requirements-backend.txt .
+RUN pip install --no-cache-dir -r requirements-backend.txt
+
+# Install Muse - download first, then run with bash, NOT sh
+RUN curl -fsSL https://dev.meta.ai/install.sh -o /tmp/install.sh \
+    && ls -lh /tmp/install.sh \
+    && head -n 50 /tmp/install.sh \
+    && bash -x /tmp/install.sh
+
+# Find where the installer put it and symlink it for cron (cron has minimal PATH)
+RUN find /root -name muse -type f 2>/dev/null; \
+    ls -la /root/.local/bin/ /root/.muse/bin/ 2>&1 || true; \
+    MUSE_BIN=$(find /root -name muse -type f -executable 2>/dev/null | head -n 1); \
+    if [ -n "$MUSE_BIN" ]; then ln -sf "$MUSE_BIN" /usr/local/bin/muse; fi; \
+    which muse && muse --version
+
+COPY chip.py chuck.py mongo_store.py ./
+COPY run_all.sh crontab scheduler-entrypoint.sh ./
+
+RUN chmod +x /app/run_all.sh /app/scheduler-entrypoint.sh \
+    && mkdir -p /app/output /host-logs /root/.config/muse /root/.muse
+
+ENV PATH="/root/.local/bin:/root/.muse/bin:${PATH}"
+
+CMD ["python", "chip.py", "--prompt", "quick"]
