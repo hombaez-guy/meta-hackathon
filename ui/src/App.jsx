@@ -89,8 +89,8 @@ export default function App() {
             <div className="range">
               {RANGES.map(([k, l]) => <button key={k} className={range === k ? 'on' : ''} onClick={() => setRange(k)}>{l}</button>)}
             </div>
-            <Graph title="CPU · Memory · Disk (%)" series={[['cpu', 'CPU'], ['memory', 'Memory'], ['disk', 'Disk']]} data={shown} max={100} />
-            <Graph title="Findings per report" series={[['findings', 'Findings']]} data={shown} bars />
+            <Graph title="CPU · Memory · Disk (%)" series={[['cpu', 'CPU'], ['memory', 'Memory'], ['disk', 'Disk']]} data={shown} max={100} onPick={(d) => d.report_id && setSelected(d.report_id)} />
+            <Graph title="Findings per report" series={[['findings', 'Findings']]} data={shown} bars onPick={(d) => d.report_id && setSelected(d.report_id)} />
           </section>
         </div>
 
@@ -198,28 +198,49 @@ function LogSearch() {
   )
 }
 
-function Graph({ title, series, data, max, bars }) {
+function Graph({ title, series, data, max, bars, onPick }) {
   const W = 480, H = 150, P = { l: 30, r: 8, t: 10, b: 20 }
+  const [hidden, setHidden] = useState({})   // legend click toggles a series
+  const [hover, setHover] = useState(null)   // index of the point under the cursor
+  const live = series.filter(([k]) => !hidden[k])
   const n = data.length
-  const top = max ?? Math.max(1, ...data.flatMap((d) => series.map(([k]) => d[k] ?? 0)))
+  const top = max ?? Math.max(1, ...data.flatMap((d) => live.map(([k]) => d[k] ?? 0)))
   const x = (i) => P.l + (n <= 1 ? (W - P.l - P.r) / 2 : (i * (W - P.l - P.r)) / (n - 1))
   const y = (v) => H - P.b - ((v / top) * (H - P.t - P.b))
-  const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)']
+  const colors = { cpu: 'var(--c1)', memory: 'var(--c2)', disk: 'var(--c3)', findings: 'var(--c1)' }
   const ticks = max ? [0, 25, 50, 75, 100] : [0, top]
   const span = n > 1 ? (Date.parse(data[n - 1].t + 'Z') - Date.parse(data[0].t + 'Z')) / 3600000 : 0
   const every = Math.max(1, Math.ceil(n / 6))
+  // Map mouse position back to the nearest data index
+  const onMove = (e) => {
+    if (!n) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const px = ((e.clientX - r.left) / r.width) * W
+    const step = n <= 1 ? 1 : (W - P.l - P.r) / (n - 1)
+    setHover(Math.max(0, Math.min(n - 1, Math.round((px - P.l) / step))))
+  }
+  const h = hover != null && data[hover]
+  const tipX = h ? Math.min(x(hover) + 10, W - 118) : 0
   return (
     <div className="graph">
-      <div className="gh"><span>{title}</span><span className="legend">{series.map(([k, l], i) => <i key={k} style={{ color: colors[i] }}>■ {l}</i>)}</span></div>
-      <svg viewBox={`0 0 ${W} ${H}`}>
+      <div className="gh"><span>{title}</span><span className="legend">
+        {series.map(([k, l]) => <i key={k} className={hidden[k] ? 'off' : ''} style={{ color: colors[k] }} onClick={() => setHidden({ ...hidden, [k]: !hidden[k] })} title="Click to show or hide">■ {l}</i>)}
+      </span></div>
+      <svg viewBox={`0 0 ${W} ${H}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)} onClick={() => h && onPick && onPick(h)} style={{ cursor: onPick ? 'pointer' : 'default' }}>
         {ticks.map((t) => <g key={t}><line x1={P.l} x2={W - P.r} y1={y(t)} y2={y(t)} className="grid" /><text x={P.l - 4} y={y(t) + 3} textAnchor="end" className="tick">{t}</text></g>)}
         {max && <line x1={P.l} x2={W - P.r} y1={y(75)} y2={y(75)} className="thr" />}
         {n === 0 && <text x={W / 2} y={H / 2} textAnchor="middle" className="tick">no data yet</text>}
-        {series.map(([k], si) => bars
-          ? data.map((d, i) => <rect key={i} x={x(i) - 6} y={y(d[k] ?? 0)} width="12" height={Math.max(0, H - P.b - y(d[k] ?? 0))} fill={colors[si]} rx="2" />)
-          : <g key={k}><polyline points={data.map((d, i) => `${x(i)},${y(d[k] ?? 0)}`).join(' ')} fill="none" stroke={colors[si]} strokeWidth="2" />
-              {data.map((d, i) => <circle key={i} cx={x(i)} cy={y(d[k] ?? 0)} r="2.5" fill={colors[si]} />)}</g>)}
+        {live.map(([k]) => bars
+          ? data.map((d, i) => <rect key={i} x={x(i) - 6} y={y(d[k] ?? 0)} width="12" height={Math.max(0, H - P.b - y(d[k] ?? 0))} fill={colors[k]} rx="2" opacity={hover == null || hover === i ? 1 : 0.45} />)
+          : <g key={k}><polyline points={data.map((d, i) => `${x(i)},${y(d[k] ?? 0)}`).join(' ')} fill="none" stroke={colors[k]} strokeWidth="2" />
+              {data.map((d, i) => <circle key={i} cx={x(i)} cy={y(d[k] ?? 0)} r={hover === i ? 4 : 2.5} fill={colors[k]} />)}</g>)}
         {data.map((d, i) => (i % every === 0 || i === n - 1) && (i === n - 1 || i + every <= n - 1 || n <= 6) && <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} className="tick">{tick(d.t, span)}</text>)}
+        {h && <g className="tip">
+          <line x1={x(hover)} x2={x(hover)} y1={P.t} y2={H - P.b} className="cursor" />
+          <rect x={tipX} y={P.t} width="110" height={14 + 12 * live.length} rx="4" />
+          <text x={tipX + 6} y={P.t + 11}>{tick(h.t, 999)}</text>
+          {live.map(([k, l], i) => <text key={k} x={tipX + 6} y={P.t + 23 + 12 * i} style={{ fill: colors[k] }}>{l} {Math.round(h[k] ?? 0)}{max ? '%' : ''}</text>)}
+        </g>}
       </svg>
     </div>
   )

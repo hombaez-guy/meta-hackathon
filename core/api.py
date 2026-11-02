@@ -146,7 +146,7 @@ def metrics(limit: int = 30):
     """Series for the dashboard graphs."""
     rows = sorted(Store().list_reports(limit), key=lambda r: r.created_at)
     return [
-        {"t": r.created_at[:16], "cpu": r.chip.cpu_percent, "memory": r.chip.memory_percent, "disk": r.chip.disk_percent,
+        {"t": r.created_at[:16], "report_id": r.report_id, "cpu": r.chip.cpu_percent, "memory": r.chip.memory_percent, "disk": r.chip.disk_percent,
          "status": r.review.overall_status, "findings": len(r.review.findings)}
         for r in rows
     ]
