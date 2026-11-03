@@ -21,6 +21,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /app
 
 COPY requirements-backend.txt .
+
 RUN pip install --no-cache-dir -r requirements-backend.txt
 
 # Install Muse - download first, then run with bash, NOT sh

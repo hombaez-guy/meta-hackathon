@@ -61,8 +61,9 @@ services:
       - ./output:/app/output
       - ./muse-config-docker:/root/.config/muse
       - /var/log/asl:/host-logs/asl:ro
+      - ./demo-logs:/app/demo-logs
 
-  # Manual one-off runs only 
+  # Manual one-off runs only - NOT used by cron 
   health-checker:
     build:
       context: .
@@ -84,7 +85,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-backend
-    command: ["python", "chuck.py", "--path", "/host-logs", "--hours", "24", "--output", "/app/data/inbox/logs.json"]
+    command: ["python", "chuck.py", "--path", "./demo-logs", "--hours", "24", "--output", "/app/data/inbox/logs.json"]
     environment:
       MONGO_URI: mongodb://db:27017
       MONGO_DB: ${MONGO_DB:-health_monitor}
@@ -97,6 +98,7 @@ services:
       - ./data/inbox:/app/data/inbox
       - ./output:/app/output
       - /var/log/asl:/host-logs/asl:ro
+      - ./demo-logs:/app/demo-logs
     profiles: ["jobs"]
 
 volumes:

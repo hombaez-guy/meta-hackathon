@@ -71,6 +71,12 @@ async def run_review(
         if f.fix:
             store.record_fix(_to_record(report, f.fix))
     log.info("report %s written (%s, %d findings)", report.report_id, review.overall_status, len(review.findings))
+    try:
+        from core import notify
+
+        notify.send_report(report)
+    except Exception as e:  # noqa: BLE001 - a phone notification must never sink the report
+        log.warning("telegram send failed: %s", e)
     return report
 
 

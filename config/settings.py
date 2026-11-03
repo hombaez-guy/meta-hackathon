@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     model_timeout: int = Field(default=120, alias="FOREMAN_MODEL_TIMEOUT")  # seconds per model call
 
     # Store: MongoDB if MONGO_URI is set, otherwise JSON files under data/db/.
-    # Same database as mongo_store.py (health_monitor). His collections: system_metrics,
+    # Same database as mongo_store.py (health_monitor). Collections: system_metrics,
     # health_results, log_summaries, logs. Ours: reports, findings, fixes. No overlap.
     mongo_uri: str = Field(default="", alias="MONGO_URI")
     mongo_db: str = Field(default="health_monitor", alias="MONGO_DB")
@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Built-in scheduler: run a review every N minutes when new Chip/Chuck data appears. 0 = off.
     review_interval_min: int = Field(default=0, alias="FOREMAN_REVIEW_INTERVAL_MIN")
     server_name: str = Field(default="", alias="FOREMAN_SERVER_NAME")  # label on reports; hostname if empty
+
+    # Telegram: report to the admin's phone with Apply / Rerun buttons. Empty token = off.
+    telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
+    telegram_chat_id: str = Field(default="", alias="TELEGRAM_CHAT_ID")      # optional; /start records it
+    telegram_notify: str = Field(default="issues", alias="TELEGRAM_NOTIFY")  # issues | all
 
     # Paths
     prompts_dir: Path = ROOT / "prompts"

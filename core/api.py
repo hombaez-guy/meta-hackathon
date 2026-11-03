@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config.settings import settings
+from core import notify
 from core.pipeline import apply_fix, rerun_fix, run_review
 from core.store import Store
 
@@ -20,11 +21,13 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    from core import scheduler
+    from core import notify, scheduler
 
     scheduler.start()
+    notify.start()
     yield
     scheduler.stop()
+    notify.stop()
 
 
 app = FastAPI(title="Foreman", version="0.1", lifespan=lifespan)
@@ -73,7 +76,8 @@ def health():
             mongo = "unreachable"
     return {"ok": True, "mock": settings.mock, "reviewer": settings.reviewer_model, "fixer": settings.fixer_model,
             "mongo": mongo, "mongo_db": settings.mongo_db, "input": settings.input_source,
-            "review_interval_min": settings.review_interval_min, "server": settings.server_name}
+            "review_interval_min": settings.review_interval_min, "server": settings.server_name,
+            "telegram": "off" if not notify.enabled() else ("connected" if notify.chat_id() else "waiting for /start")}
 
 
 @app.get("/api/connections")

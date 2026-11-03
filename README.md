@@ -2,26 +2,62 @@
 
 **Agents watch the server. You approve the fix.**
 
-Foreman is an autonomous system administrator built from AI agents on Meta's models. Two collectors gather a server's metrics and logs every 30 minutes. A Reviewer agent reads them against the last seven days of history and writes a one-page health report. Any finding that needs action goes to a Fixer agent, which proposes an executable, reversible fix with its side effects named. A human approves it from the dashboard. The result is recorded, so the next review knows what was done and whether it worked.
+Foreman is an autonomous system administrator built from AI agents on Meta's models. Two collectors gather a server's metrics and logs every 30 minutes. A Reviewer agent reads them against the last seven days of history and writes a one-page health report. Any finding that needs action goes to a Fixer agent, which proposes an executable, reversible fix with its side effects named. A human approves it from the dashboard, or from their phone. The result is recorded, so the next review knows what was done and whether it worked.
 
 Built for the Meta Global AI Developer Hackathon (Oct 27 to Nov 4, 2026), startup track, problem statement "Build for Your World."
 
 ![Foreman dashboard](docs/dashboard.png)
 
+## Try it in 60 seconds
+
+You need Docker and a Meta Model API key. Nothing else.
+
+```bash
+cp .env.example .env                  # paste your key into MODEL_API_KEY. Every other value is a working default.
+docker compose up -d --build          # MongoDB + collectors on cron + Foreman with the dashboard
+open http://localhost:8000
+```
+
+The server will be healthy, which is boring. Give it something to find:
+
+```bash
+python server_status_dummy_logs.py --count 100 --output ./demo-logs/test.log --seed 7   # a postgres outage, in log form
+docker compose exec scheduler sh /app/run_all.sh                                        # collect now instead of waiting for cron
+curl -X POST 'localhost:8000/api/tick?force=true'                                       # review now
+```
+
+About 20 seconds later the dashboard shows a red report: findings with evidence, a proposed fix under each one, and Apply / Rerun buttons. That's the whole product.
+
+No API key yet? `FOREMAN_MOCK=1` in `.env` runs the same pipeline on local stand-in models.
+
 ## What it does
 
 A sysadmin's morning usually starts with the same questions: is anything wrong, is it new, and what should I do about it. Foreman answers all three before they ask. It does not act on its own. Every fix is proposed with a plain-language explanation, the exact commands, the risk, the rollback, and what else it touches. The admin clicks Apply or Rerun. Rerun rejects the proposal and asks for a different approach, with a note on how the new one compares to the old.
 
-The loop:
-
 ```
 Server --> Chip (metrics, via Muse CLI) --\
-                                          +--> Reviewer (muse-wonder-1.0) --> report --> Admin
-       --> Chuck (log scraper, no AI) ----/          |                                    |
-                                               The Fixer (muse-spark-1.3) <--- Rerun -----+
-                                                     |                                    |
-                                               FixProposal ------------ Apply ------------+--> store
+                                          +--> Reviewer (muse-wonder-1.0) --> report --> dashboard + Telegram --> Admin
+       --> Chuck (log scraper, no AI) ----/          |                                                             |
+                                               The Fixer (muse-spark-1.3) <-------------- Rerun -------------------+
+                                                     |                                                             |
+                                               FixProposal --------------------------- Apply ---------------------+--> store
 ```
+
+## Reports on your phone (optional)
+
+<img src="docs/telegram.png" width="300" align="right" alt="Foreman in Telegram">
+
+Foreman can send every report to Telegram, with Apply and Rerun buttons under each proposed fix. Tap Apply on the couch, the fix runs on the server, the result comes back in the chat. No public URL and no extra container; Foreman polls Telegram from inside the one it already runs in.
+
+Three steps, two minutes:
+
+1. In Telegram, message `@BotFather`, send `/newbot`, pick a name. Copy the token it gives you.
+2. Put it in `.env` as `TELEGRAM_BOT_TOKEN=...` and restart: `docker compose up -d foreman`.
+3. Open your new bot in Telegram and send `/start`. Foreman replies "Foreman connected" and remembers the chat.
+
+From then on, reports with findings arrive on their own. `/status` shows the latest report, `/review` runs one now. Healthy reports stay quiet unless you set `TELEGRAM_NOTIFY=all`.
+
+<br clear="all">
 
 ## Meta models, and where each one sits
 
@@ -38,24 +74,19 @@ Both agents are Pydantic AI agents with structured output. One finding worth sha
 
 Everything in this repository was written between Oct 27 and Nov 4, 2026:
 
-- `chip.py`, `chuck.py`, `mongo_store.py` and the cron scheduler container (collection side)
-- `core/`, `config/`, `prompts/`, `main.py`, `ui/` and the Docker build (agents, API, dashboard)
+- `chip.py`, `chuck.py`, `mongo_store.py`, `server_status_dummy_logs.py` and the cron scheduler container (collection side)
+- `core/`, `config/`, `prompts/`, `main.py`, `ui/`, the Telegram bot and the Docker build (agents, API, dashboard, phone)
 
 There is no pre-existing codebase underneath it.
 
-## Quick start
+## Running it
+
+`docker compose up -d --build` starts three containers: MongoDB (`db`), a cron scheduler that runs Chip and Chuck every 30 minutes (`scheduler`), and Foreman with the API and dashboard on port 8000 (`foreman`). Foreman's own scheduler reviews every 30 minutes whenever new collector data has landed, so the loop runs with nobody touching it.
 
 ```bash
-cp .env.example .env            # add MODEL_API_KEY
-docker compose up -d --build
-open http://localhost:8000
-```
-
-That starts three containers: MongoDB (`db`), a cron scheduler that runs Chip and Chuck every 30 minutes (`scheduler`), and Foreman with the API and dashboard on port 8000 (`foreman`). Foreman's own scheduler reviews every 30 minutes whenever new collector data has landed, so the loop runs with nobody touching it.
-
-```bash
-docker compose logs -f foreman                    # watch each review land
-curl -X POST localhost:8000/api/tick?force=true   # review now instead of waiting
+docker compose logs -f foreman                      # watch each review land
+curl -X POST 'localhost:8000/api/tick?force=true'   # review now instead of waiting
+docker compose exec scheduler muse login            # one time: lets Chip use the Muse CLI instead of its local fallback
 ```
 
 Compressed demo clock: set `FOREMAN_REVIEW_INTERVAL_MIN: "1"` in `docker-compose.yml` and the cycle plays out every minute.
@@ -90,6 +121,7 @@ foreman/
 ├── chip.py                 metrics via Muse CLI  -> health.json, Mongo health_results
 ├── chuck.py                log scraper (no AI)   -> logs.json, Mongo log_summaries + logs
 ├── mongo_store.py          collectors -> MongoDB
+├── server_status_dummy_logs.py   synthetic outage logs for demos and tests
 ├── run_all.sh, crontab, scheduler-entrypoint.sh, Dockerfile-backend   the cron container
 ├── main.py                 CLI: test | review | apply | rerun | serve | history | probe
 ├── config/settings.py      .env -> Settings
@@ -101,6 +133,7 @@ foreman/
 │   ├── pipeline.py         run_review, rerun_fix, apply_fix
 │   ├── scheduler.py        reviews on an interval, only when inputs changed
 │   ├── executor.py         runs approved fixes (shell or muse exec)
+│   ├── notify.py           Telegram: report to the phone, Apply / Rerun from the chat
 │   ├── report.py           one-page HTML report
 │   ├── store.py            MongoDB, or JSON files in data/db/ when MONGO_URI is empty
 │   ├── mock_models.py      FOREMAN_MOCK=1 stand-ins
@@ -112,6 +145,7 @@ foreman/
 │   ├── inbox/              health.json and logs.json land here
 │   ├── samples/            example inputs for testing
 │   └── reports/            rendered HTML
+├── demo-logs/              where the dummy log script writes; mounted into the scheduler
 ├── ui/                     React + Vite dashboard
 ├── Dockerfile, docker-compose.yml
 └── .env.example
@@ -119,7 +153,7 @@ foreman/
 
 ## How the pieces fit
 
-**Collection.** Chip collects real metrics with psutil, injects them into a prompt, and runs `muse exec --trust-workspace` non-interactively. It parses Muse's JSON reply into `health.json`; if Muse times out or returns no JSON, it computes the status locally so the file is always valid. Chuck searches the OS log locations (or paths you give it), parses timestamps and levels, reads only the tail of large files, handles gzipped rotations, and writes `logs.json` sorted newest first with a summary of counts by level. Both run from cron inside the `scheduler` container and store their results through `mongo_store.py`.
+**Collection.** Chip collects real metrics with psutil, injects them into a prompt, and runs `muse exec --trust-workspace` non-interactively. It parses Muse's JSON reply into `health.json`; if Muse times out or returns no JSON, it computes the status locally so the file is always valid. Chuck searches the log paths you give it, parses timestamps and levels, reads only the tail of large files, handles gzipped rotations, and writes `logs.json` sorted newest first with a summary of counts by level. Both run from cron inside the `scheduler` container and store their results through `mongo_store.py`.
 
 **Inputs.** `core/inputs.py` reads the newest Chip and Chuck results from Mongo (`health_results`, `log_summaries`, `logs`) and rebuilds the exact file shapes. If Mongo is unreachable it reads `data/inbox/*.json`. `FOREMAN_INPUT` picks the behavior: `auto`, `mongo`, or `file`.
 
@@ -131,9 +165,11 @@ foreman/
 
 **Guardrails in code, regardless of what the model says.** The Reviewer can't call a server healthy when a metric is over threshold, and must return at least one finding when it says warning or critical. The Fixer can't propose banned commands (`mkfs`, `iptables`, `passwd`, `dd` to a device, and so on) and `rm` is only allowed under `/tmp`, `/var/tmp`, `/var/log`, and `/var/cache`. A disallowed proposal triggers a retry with the reason; a Fixer failure never sinks the report.
 
-**Store.** Reports, findings, and fixes go to the same MongoDB as the collectors, in their own collections. Applied, failed, and rejected fixes are what the Reviewer reads as history next time.
+**Apply.** Approved steps run in order and stop at the first failure. Exit codes and output are captured, the fix is recorded as applied or failed, and the report and Telegram message update. A failed fix is history too: the Reviewer sees it next run and the Fixer is told not to propose it again.
 
-**Dashboard.** Reports list with one-click View of the HTML report, metric graphs with hover values and a 6h / 24h / 7d range, log search across stored reports, latest status, and a Solutions panel with one row per finding: issue, proposed fix, Apply, Rerun.
+**Store.** Reports, findings, and fixes go to the same MongoDB as the collectors, in their own collections.
+
+**Dashboard.** Reports list with one-click View of the HTML report, metric graphs with hover values, click-to-select, and a 6h / 24h / 7d range, log search across stored reports, latest status, and a Solutions panel with one row per finding: issue, proposed fix, Apply, Rerun.
 
 ## Tuning the agents
 
@@ -143,7 +179,7 @@ Edit `prompts/reviewer.xml` and `prompts/fixer.xml`. Thresholds, focus areas, hi
 
 | Method | Path | What |
 | --- | --- | --- |
-| GET | `/api/health` | Models, Mongo status, review interval, hostname |
+| GET | `/api/health` | Models, Mongo and Telegram status, review interval, hostname |
 | POST | `/api/run` | Review now |
 | POST | `/api/tick?force=` | Scheduler pass on demand |
 | GET | `/api/reports`, `/api/reports/latest`, `/api/reports/{id}`, `/api/reports/{id}/html` | Reports |
@@ -157,21 +193,24 @@ FastAPI publishes the OpenAPI spec at `/openapi.json`.
 
 ## Configuration
 
-`.env` keys, all with defaults in `config/settings.py`:
+`.env` keys. `.env.example` carries every default, so the only required edit is the API key.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `MODEL_API_KEY` | | Meta Model API key |
+| `MODEL_API_KEY` | | Meta Model API key. Required. |
 | `MODEL_API_BASE_URL` | `https://api.meta.ai/v1` | OpenAI-compatible endpoint |
 | `REVIEWER_MODEL` | `muse-wonder-1.0` | |
 | `FIXER_MODEL` | `muse-spark-1.3` | |
-| `FOREMAN_MOCK` | `0` | `1` runs with local stand-in models |
-| `MONGO_URI` | | Empty means JSON files in `data/db/` |
+| `FOREMAN_MOCK` | `0` | `1` runs with local stand-in models, no key needed |
+| `MONGO_URI` | | Empty means JSON files in `data/db/`. Compose sets `mongodb://db:27017`. |
 | `MONGO_DB` | `health_monitor` | |
 | `FOREMAN_INPUT` | `auto` | `auto`, `mongo`, or `file` |
 | `FOREMAN_EXECUTOR` | `shell` | `shell` or `muse` |
-| `FOREMAN_REVIEW_INTERVAL_MIN` | `0` | Built-in scheduler; `0` is off |
+| `FOREMAN_REVIEW_INTERVAL_MIN` | `0` | Built-in scheduler; `0` is off. Compose sets 30. |
 | `FOREMAN_HISTORY_DAYS` | `7` | History window for the Reviewer |
+| `FOREMAN_SERVER_NAME` | hostname | Label on reports, dashboard and Telegram |
+| `TELEGRAM_BOT_TOKEN` | | Optional. From `@BotFather`. Empty means Telegram is off. |
+| `TELEGRAM_NOTIFY` | `issues` | `issues` sends reports with findings; `all` sends every report |
 
 ## Collector reference
 
@@ -201,10 +240,14 @@ Options: `--path` (repeatable), `--hours` (0 = no limit), `--level`, `--keyword`
 
 Output: `timestamp`, `host`, `system`, `search_paths`, `hours_searched`, `summary` (`total_entries`, `files_scanned`, `by_level`, `errors`, `warnings`), `files[]`, `logs[]` with `file`, `line`, `timestamp`, `level`, `message`.
 
+### Dummy logs
+
+`server_status_dummy_logs.py` writes realistic JSON log lines (health checks, resource snapshots, HTTP requests, service events) with short random outages. `--seed` makes a run repeatable; `--count`, `--interval` and `--start` control volume and timing. The compose file mounts `./demo-logs` into the scheduler, so regenerating the file is enough; no rebuild.
+
 ## Known limits
 
-- `FOREMAN_EXECUTOR=shell` applies fixes inside the Foreman container. On a real deployment Foreman runs as a sidecar on the host it watches.
-- Some system logs are root-only. Chuck skips files it can't read. The compose file mounts `/var/log` read-only into the scheduler container.
+- `FOREMAN_EXECUTOR=shell` applies fixes inside the Foreman container. A fix that restarts a host service fails there with a clear exit code, and Foreman records the failure. On a real deployment Foreman runs as a sidecar on the host it watches.
+- Some system logs are root-only. Chuck skips files it can't read. The compose file mounts `/var/log/asl` read-only for macOS hosts; on Linux, mount `/var/log` the same way.
 - Chip's Muse CLI call needs a Muse login inside the scheduler container (`docker compose exec scheduler muse login`). Without it, Chip falls back to local metrics and the pipeline still runs.
 
 ## License

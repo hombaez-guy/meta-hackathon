@@ -12,3 +12,5 @@ ui/node_modules/
 ui/dist/
 output/
 output/*.log
+demo-logs/
+demo-logs/*.log

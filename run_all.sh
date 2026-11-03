@@ -26,7 +26,7 @@ python -c 'p="/host-logs/asl/2026.10.27.G80.asl"; f=open(p,"rb"); f.read(1); f.c
 
 echo "[$(date -Iseconds)] Collecting logs..."
 python /app/chuck.py \
-  --path /host-logs \
+  --path ./demo-logs \
   --hours 1 \
   --output /app/data/inbox/logs.json
 
