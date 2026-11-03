@@ -1,0 +1,15 @@
+.git
+.env
+node_modules
+ui/node_modules
+ui/dist
+data/db
+data/reports
+data/inbox
+logs
+output
+demo-logs
+muse-config-docker
+__pycache__
+*.pyc
+.DS_Store
