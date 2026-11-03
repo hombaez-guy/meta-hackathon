@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     model_timeout: int = Field(default=120, alias="FOREMAN_MODEL_TIMEOUT")  # seconds per model call
 
     # Store: MongoDB if MONGO_URI is set, otherwise JSON files under data/db/.
-    # Same database as mongo_store.py (health_monitor). Collections: system_metrics,
+    # Same database as Peter's mongo_store.py (health_monitor). His collections: system_metrics,
     # health_results, log_summaries, logs. Ours: reports, findings, fixes. No overlap.
     mongo_uri: str = Field(default="", alias="MONGO_URI")
     mongo_db: str = Field(default="health_monitor", alias="MONGO_DB")
@@ -36,6 +36,9 @@ class Settings(BaseSettings):
 
     # Execution: "shell" runs fix commands directly, "muse" hands them to `muse exec`
     executor: str = Field(default="shell", alias="FOREMAN_EXECUTOR")
+    # What the Fixer should assume about the host: "docker" (services are containers, use docker restart)
+    # or "systemd" (use systemctl). Compose deployments are docker.
+    host_kind: str = Field(default="docker", alias="FOREMAN_HOST_KIND")
     execute_timeout: int = Field(default=120, alias="FOREMAN_EXECUTE_TIMEOUT")
 
     # History window the Reviewer reads before writing

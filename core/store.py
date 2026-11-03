@@ -115,7 +115,15 @@ class Store:
         return [FixRecord.model_validate(r) for r in self.b.find("fixes", **where)]
 
     def find_fix(self, fix_id: str) -> tuple[Report, FixProposal] | None:
-        for rep in self.list_reports(limit=200):
+        # Fast path: the fixes collection carries report_id, so go straight to that report
+        for rec in self.b.find("fixes", fix_id=fix_id):
+            rep = self.get_report(rec.get("report_id", ""))
+            if rep:
+                for f in rep.review.findings:
+                    if f.fix and f.fix.fix_id == fix_id:
+                        return rep, f.fix
+        # Fallback: scan reports (older records without a fix row)
+        for rep in self.list_reports(limit=1000):
             for f in rep.review.findings:
                 if f.fix and f.fix.fix_id == fix_id:
                     return rep, f.fix

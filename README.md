@@ -1,10 +1,34 @@
-# Foreman
+<p align="center">
+  <img src="docs/logo.png" width="360" alt="Foreman">
+</p>
 
-**Agents watch the server. You approve the fix.**
+<h3 align="center">Agents watch the server. You approve the fix.</h3>
+
+<p align="center">
+  Built on <b>muse-wonder-1.0</b> and <b>muse-spark-1.3</b> via Meta Model API, with the Muse CLI on the collection side.<br>
+  Meta Global AI Developer Hackathon 2026, startup track.
+</p>
+
+---
 
 Foreman is an autonomous system administrator built from AI agents on Meta's models. Two collectors gather a server's metrics and logs every 30 minutes. A Reviewer agent reads them against the last seven days of history and writes a one-page health report. Any finding that needs action goes to a Fixer agent, which proposes an executable, reversible fix with its side effects named. A human approves it from the dashboard, or from their phone. The result is recorded, so the next review knows what was done and whether it worked.
 
-Built for the Meta Global AI Developer Hackathon (Oct 27 to Nov 4, 2026), startup track, problem statement "Build for Your World."
+Built for the Meta Global AI Developer Hackathon (Oct 27 to Nov 4, 2026), problem statement "Build for Your World."
+
+## How it works
+
+![How Foreman works](docs/how-it-works.png)
+
+Six steps, two of them AI, one of them you.
+
+1. **Your server** runs as usual. Foreman sits next to it.
+2. **Collect.** Every 30 minutes two small scripts grab the numbers (CPU, memory, disk) and the newest log lines. No AI here, just facts.
+3. **Review.** The Reviewer agent reads today against the last seven days and writes a one-page report: what's wrong, whether it's new or recurring, how bad.
+4. **Propose a fix.** For each finding that needs action, the Fixer agent writes the exact commands, the risk, the side effects, and how to undo it.
+5. **You decide.** On the dashboard or on your phone. Tap Apply, or Rerun for a different approach.
+6. **Fixed and remembered.** The fix runs, the result is saved, and the next report confirms whether it worked. If it didn't, the Reviewer says so and the Fixer won't propose it again.
+
+Nothing runs on the server until a person taps Apply.
 
 ![Foreman dashboard](docs/dashboard.png)
 
@@ -26,7 +50,17 @@ docker compose exec scheduler sh /app/run_all.sh                                
 curl -X POST 'localhost:8000/api/tick?force=true'                                       # review now
 ```
 
-About 20 seconds later the dashboard shows a red report: findings with evidence, a proposed fix under each one, and Apply / Rerun buttons. That's the whole product.
+About 20 seconds later the dashboard shows a red report: findings with evidence, a proposed fix under each one, and Apply / Rerun buttons. The postgres fix will say `docker restart postgres`, because compose also starts a small postgres container for exactly this. Click Apply. The fix runs, the output comes back, the state flips to APPLIED.
+
+Then prove it worked:
+
+```bash
+python server_status_dummy_logs.py --count 60 --output ./demo-logs/test.log --seed 19   # clean logs this time
+docker compose exec scheduler sh /app/run_all.sh
+curl -X POST 'localhost:8000/api/tick?force=true'
+```
+
+The next report comes back healthy, and its trend line says the postgres failures stopped after the applied restart. Break, fix, verify: that's the whole product.
 
 No API key yet? `FOREMAN_MOCK=1` in `.env` runs the same pipeline on local stand-in models.
 
@@ -34,14 +68,7 @@ No API key yet? `FOREMAN_MOCK=1` in `.env` runs the same pipeline on local stand
 
 A sysadmin's morning usually starts with the same questions: is anything wrong, is it new, and what should I do about it. Foreman answers all three before they ask. It does not act on its own. Every fix is proposed with a plain-language explanation, the exact commands, the risk, the rollback, and what else it touches. The admin clicks Apply or Rerun. Rerun rejects the proposal and asks for a different approach, with a note on how the new one compares to the old.
 
-```
-Server --> Chip (metrics, via Muse CLI) --\
-                                          +--> Reviewer (muse-wonder-1.0) --> report --> dashboard + Telegram --> Admin
-       --> Chuck (log scraper, no AI) ----/          |                                                             |
-                                               The Fixer (muse-spark-1.3) <-------------- Rerun -------------------+
-                                                     |                                                             |
-                                               FixProposal --------------------------- Apply ---------------------+--> store
-```
+Foreman remembers. A fix that failed shows up in the next review as "tried, didn't work," and the Fixer is told not to propose it again. A finding that keeps coming back is tagged recurring with the date it first appeared. And when the problem is somewhere Foreman can't reach, the Fixer says so and returns a manual step instead of inventing a command.
 
 ## Reports on your phone (optional)
 
@@ -55,9 +82,14 @@ Three steps, two minutes:
 2. Put it in `.env` as `TELEGRAM_BOT_TOKEN=...` and restart: `docker compose up -d foreman`.
 3. Open your new bot in Telegram and send `/start`. Foreman replies "Foreman connected" and remembers the chat.
 
-From then on, reports with findings arrive on their own. `/status` shows the latest report, `/review` runs one now. Healthy reports stay quiet unless you set `TELEGRAM_NOTIFY=all`.
+From then on, reports with findings arrive on their own. `/status` shows the latest report, `/review` runs one now. Healthy reports stay quiet unless you set `TELEGRAM_NOTIFY=all`. The chat is remembered across restarts; set `TELEGRAM_CHAT_ID` in `.env` if you want to pin it.
 
 <br clear="all">
+
+<p align="center">
+  <img src="docs/telegram.png" width="280" alt="Proposed fix with Apply and Rerun buttons">&nbsp;&nbsp;
+  <img src="docs/telegram-applied.png" width="280" alt="Applied: docker restart postgres, with output">
+</p>
 
 ## Meta models, and where each one sits
 
@@ -81,7 +113,7 @@ There is no pre-existing codebase underneath it.
 
 ## Running it
 
-`docker compose up -d --build` starts three containers: MongoDB (`db`), a cron scheduler that runs Chip and Chuck every 30 minutes (`scheduler`), and Foreman with the API and dashboard on port 8000 (`foreman`). Foreman's own scheduler reviews every 30 minutes whenever new collector data has landed, so the loop runs with nobody touching it.
+`docker compose up -d --build` starts four containers: MongoDB (`db`), a cron scheduler that runs Chip and Chuck every 30 minutes (`scheduler`), Foreman with the API and dashboard on port 8000 (`foreman`), and a small `postgres` so the demo has a real service to restart. Foreman gets the host's Docker socket, which is how an approved `docker restart` reaches the other containers. Foreman's own scheduler reviews every 30 minutes whenever new collector data has landed, so the loop runs with nobody touching it.
 
 ```bash
 docker compose logs -f foreman                      # watch each review land
@@ -161,11 +193,11 @@ foreman/
 
 **Review.** The Reviewer gets the metrics, the digest, and a history window: prior reports, open findings, applied and rejected fixes. It writes a status, headline, summary, per-finding evidence and impact, a trend tag for each finding, and marks which findings need a fix.
 
-**Fix.** For each finding marked `needs_fix`, The Fixer proposes a title, explanation, ordered steps with commands, risk, side effects, and rollback. On Rerun it also writes a "versus previous" note.
+**Fix.** For each finding marked `needs_fix`, The Fixer proposes a title, explanation, ordered steps with commands, risk, side effects, and rollback. On Rerun it also writes a "versus previous" note. It is told what kind of host it's writing for (`FOREMAN_HOST_KIND`): on a container host it gets the live list of running containers and uses `docker ps`, `docker logs`, `docker restart`, `docker inspect`; on a systemd host it uses `systemctl`. When the finding points at a machine it can't reach, it returns a single `echo MANUAL` step and explains what the admin has to do by hand.
 
-**Guardrails in code, regardless of what the model says.** The Reviewer can't call a server healthy when a metric is over threshold, and must return at least one finding when it says warning or critical. The Fixer can't propose banned commands (`mkfs`, `iptables`, `passwd`, `dd` to a device, and so on) and `rm` is only allowed under `/tmp`, `/var/tmp`, `/var/log`, and `/var/cache`. A disallowed proposal triggers a retry with the reason; a Fixer failure never sinks the report.
+**Guardrails in code, regardless of what the model says.** The Reviewer can't call a server healthy when a metric is over threshold, and must return at least one finding when it says warning or critical. The Fixer can't propose banned commands (`mkfs`, `iptables`, `passwd`, `dd` to a device, and so on), `rm` is only allowed under `/tmp`, `/var/tmp`, `/var/log`, and `/var/cache`, and it can never restart, stop, or kill Foreman's own containers (`foreman`, `health_db`, `health_scheduler`). A disallowed proposal triggers a retry with the reason; a Fixer failure never sinks the report.
 
-**Apply.** Approved steps run in order and stop at the first failure. Exit codes and output are captured, the fix is recorded as applied or failed, and the report and Telegram message update. A failed fix is history too: the Reviewer sees it next run and the Fixer is told not to propose it again.
+**Apply.** Approved steps run in order and stop at the first failure. Exit codes and output are captured, the fix is recorded as applied or failed, and the report and Telegram message update. A failed fix is history too: the Reviewer sees it next run and the Fixer is told not to propose it again. Inside compose, Foreman has the Docker socket, so a `docker restart` acts on the real containers next to it; that's the same shape as a sidecar on a production host.
 
 **Store.** Reports, findings, and fixes go to the same MongoDB as the collectors, in their own collections.
 
@@ -206,10 +238,12 @@ FastAPI publishes the OpenAPI spec at `/openapi.json`.
 | `MONGO_DB` | `health_monitor` | |
 | `FOREMAN_INPUT` | `auto` | `auto`, `mongo`, or `file` |
 | `FOREMAN_EXECUTOR` | `shell` | `shell` or `muse` |
+| `FOREMAN_HOST_KIND` | `docker` | What the Fixer assumes about the host: `docker` (services are containers) or `systemd` |
 | `FOREMAN_REVIEW_INTERVAL_MIN` | `0` | Built-in scheduler; `0` is off. Compose sets 30. |
 | `FOREMAN_HISTORY_DAYS` | `7` | History window for the Reviewer |
 | `FOREMAN_SERVER_NAME` | hostname | Label on reports, dashboard and Telegram |
 | `TELEGRAM_BOT_TOKEN` | | Optional. From `@BotFather`. Empty means Telegram is off. |
+| `TELEGRAM_CHAT_ID` | | Optional. `/start` records it; set here to pin it. |
 | `TELEGRAM_NOTIFY` | `issues` | `issues` sends reports with findings; `all` sends every report |
 
 ## Collector reference
@@ -246,7 +280,8 @@ Output: `timestamp`, `host`, `system`, `search_paths`, `hours_searched`, `summar
 
 ## Known limits
 
-- `FOREMAN_EXECUTOR=shell` applies fixes inside the Foreman container. A fix that restarts a host service fails there with a clear exit code, and Foreman records the failure. On a real deployment Foreman runs as a sidecar on the host it watches.
+- Fixes run from inside the Foreman container. With the Docker socket mounted (compose does this) it can restart any container on the host. It cannot restart a bare-metal service on the host, and `/proc/sys` is read-only to it, so the Fixer is told not to propose sysctl or cache-drop fixes on a container host. On a systemd host, set `FOREMAN_HOST_KIND=systemd` and run Foreman as a sidecar.
+- The Fixer only acts on this host. Findings that come from logs about other machines (the demo logs mention `web-01`, `web-02`) get a manual step, not a command.
 - Some system logs are root-only. Chuck skips files it can't read. The compose file mounts `/var/log/asl` read-only for macOS hosts; on Linux, mount `/var/log` the same way.
 - Chip's Muse CLI call needs a Muse login inside the scheduler container (`docker compose exec scheduler muse login`). Without it, Chip falls back to local metrics and the pipeline still runs.
 

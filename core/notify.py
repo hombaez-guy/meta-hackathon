@@ -27,7 +27,7 @@ from core.schemas import FixProposal, Report
 log = logging.getLogger("foreman")
 
 API = "https://api.telegram.org/bot{token}/{method}"
-STATE = settings.data_dir / "telegram.json"  # {"chat_id": ..., "offset": ...}
+STATE = settings.logs_dir / "telegram.json"  # {"chat_id": ..., "offset": ...}. logs/ is mounted, so it survives restarts.
 _stop = threading.Event()
 _thread: threading.Thread | None = None
 

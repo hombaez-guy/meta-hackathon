@@ -1,5 +1,5 @@
 services:
-  # ---- Foreman: Reviewer, Fixer, API, dashboard (Nik) ----
+  # ---- Foreman: Reviewer, Fixer, API, dashboard ----
   foreman:
     build: .
     container_name: foreman
@@ -17,9 +17,23 @@ services:
       - ./data/reports:/app/data/reports
       - ./logs:/app/logs
       - ./prompts:/app/prompts           # edit the XML without rebuilding
+      - /var/run/docker.sock:/var/run/docker.sock   # approved fixes can restart containers on this host
     depends_on:
       db:
         condition: service_healthy
+
+  # ---- Demo workload: a real postgres the Fixer can restart ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: foreman
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ---- Database ----
   db:
@@ -63,7 +77,7 @@ services:
       - /var/log/asl:/host-logs/asl:ro
       - ./demo-logs:/app/demo-logs
 
-  # Manual one-off runs only - NOT used by cron 
+  # Manual one-off runs only - NOT used by cron
   health-checker:
     build:
       context: .

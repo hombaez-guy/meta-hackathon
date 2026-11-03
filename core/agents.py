@@ -128,10 +128,36 @@ fixer_agent: Agent[FixDeps, FixProposal] = Agent(
 )
 
 
+def host_environment() -> str:
+    """What the Fixer may assume about where its commands run."""
+    if settings.host_kind == "systemd":
+        return "HOST: Linux with systemd. Manage services with systemctl. Verify with systemctl is-active."
+    running = ""
+    try:
+        import subprocess
+
+        out = subprocess.run(["docker", "ps", "--format", "{{.Names}}\t{{.Status}}"], capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            running = "\nContainers running right now (name, status):\n" + out.stdout.strip()
+    except Exception:  # noqa: BLE001 - no docker here; the Fixer still gets the rules
+        pass
+    return (
+        "HOST: services on this host run as Docker containers. systemctl is NOT available. "
+        "Check a service with `docker ps --filter name=<name> --format '{{.Names}} {{.Status}}'`, "
+        "read its logs with `docker logs --tail 50 <name>`, restart it with `docker restart <name>`, "
+        "verify with `docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' <name>`. "
+        "Use the container names listed below, not guessed service names. "
+        "Never restart, stop, or kill the containers foreman, health_db, or health_scheduler: they are Foreman itself. "
+        "/proc/sys is read-only here: never drop caches, write sysctls, or touch swap. "
+        "For memory or CPU pressure, restart the container that holds it." + running
+    )
+
+
 @fixer_agent.instructions
 def fixer_context(ctx: RunContext[FixDeps]) -> str:
     d = ctx.deps
     parts = [
+        host_environment(),
         f"FINDING:\n{json.dumps(d.finding.model_dump(exclude={'fix'}), indent=1)}",
         f"CURRENT METRICS:\n{json.dumps(d.chip.model_dump(by_alias=True), indent=1)}",
     ]
@@ -153,12 +179,19 @@ BANNED = ("mkfs", "dd if=", "shutdown", "reboot", "iptables", "ufw ", "passwd", 
 _RM = re.compile(r"\brm\s+((?:-\w+\s+)*)(.+?)(?=\s*(?:;|&&|\|\||$))")
 
 
+SELF = ("foreman", "health_db", "health_scheduler")  # Foreman's own containers: never a fix target
+_SELF_RE = re.compile(r"\bdocker\s+(?:compose\s+)?(?:restart|stop|kill|rm|down)\b[^;&|]*\b(" + "|".join(SELF) + r")\b")
+
+
 def _check_command(cmd: str) -> str | None:
     """Return a reason if the command is outside the allowed action families, else None."""
     low = cmd.lower()
     for b in BANNED:
         if b in low:
             return f"uses '{b.strip()}'"
+    m = _SELF_RE.search(low)
+    if m:
+        return f"targets Foreman's own container '{m.group(1)}'"
     for m in _RM.finditer(cmd):
         for target in m.group(2).split():
             if target.startswith("-") or re.match(r"^\d*[<>]", target) or target in ("2>&1", "&>"):
