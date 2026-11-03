@@ -127,6 +127,8 @@ def apply_fix(fix_id: str) -> FixProposal:
     if not found:
         raise KeyError(fix_id)
     report, fix = found
+    if fix.is_manual:
+        raise ValueError("This fix is a manual step for the admin. Nothing to run; use Rerun for a different approach.")
     ok, output = execute(fix)
     fix.state = "applied" if ok else "failed"
     fix.applied_at = now_iso()

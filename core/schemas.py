@@ -121,6 +121,11 @@ class FixProposal(BaseModel):
     applied_at: str | None = None
     result: str | None = None
 
+    @property
+    def is_manual(self) -> bool:
+        """The Fixer had nothing it could safely run: the admin does this by hand."""
+        return bool(self.steps) and all(s.command.strip() == "echo MANUAL" for s in self.steps)
+
 
 class Finding(BaseModel):
     finding_id: str = Field(default_factory=lambda: new_id("fnd"))

@@ -15,6 +15,26 @@ Foreman is an autonomous system administrator built from AI agents on Meta's mod
 
 Built for the Meta Global AI Developer Hackathon (Oct 27 to Nov 4, 2026), problem statement "Build for Your World."
 
+## The crew
+
+![The Foreman crew: Chip, Chuck, The Reviewer, The Fixer](docs/team.png)
+
+Four members, each with one job. One runs a local model, two run frontier models, one runs no model at all.
+
+- **Chip** collects the metrics and runs the Muse CLI locally on the server for a first read. Local AI.
+- **Chuck** scrapes the logs. No model, just facts, so the Reviewer works from evidence.
+- **The Reviewer** (muse-wonder-1.0) reads today against seven days of history and writes the report.
+- **The Fixer** (muse-spark-1.3) writes an executable, reversible fix for anything that needs one.
+
+| Role | Model | Why |
+| --- | --- | --- |
+| Chip (metrics) | Muse CLI, `muse exec`, running on the server itself | Collects CPU, memory, disk, top processes locally and asks Muse for a first-pass health read right there. psutil fallback if Muse is unavailable. |
+| Reviewer | `muse-wonder-1.0` via Meta Model API | Reasons over today's metrics, a digest of the logs, and seven days of prior reports and fixes. Writes the report. |
+| The Fixer | `muse-spark-1.3` via Meta Model API | Fast and cheap per call. Proposes one executable fix per finding. |
+| Executor | shell, or `muse exec --trust-workspace` | Applies an approved fix. Nothing runs until Apply is pressed. |
+
+Both agents are Pydantic AI agents with structured output. One finding worth sharing: Meta Model API's native JSON mode (`response_format` with a JSON schema) drops fields that have default values from the returned object. The Reviewer's `findings` list came back empty even when the headline named three issues. The repo's `probe` command reproduces it. Both agents now use prompted output with validation and a retry guardrail instead, which fixed it.
+
 ## How it works
 
 ![How Foreman works](docs/how-it-works.png)
@@ -37,7 +57,7 @@ Nothing runs on the server until a person taps Apply.
 You need Docker and a Meta Model API key. Nothing else.
 
 ```bash
-cp .env.example .env                  # paste your key into MODEL_API_KEY. Every other value is a working default.
+cp .env.example .env                  # paste your key into MODEL_API_KEY (and META_API_KEY for the Muse CLI). Every other value is a working default.
 docker compose up -d --build          # MongoDB + collectors on cron + Foreman with the dashboard
 open http://localhost:8000
 ```
@@ -55,7 +75,7 @@ About 20 seconds later the dashboard shows a red report: findings with evidence,
 Then prove it worked:
 
 ```bash
-python server_status_dummy_logs.py --count 60 --output ./demo-logs/test.log --seed 19   # clean logs this time
+python server_status_dummy_logs.py --count 60 --output ./demo-logs/test.log --seed 166  # clean logs this time
 docker compose exec scheduler sh /app/run_all.sh
 curl -X POST 'localhost:8000/api/tick?force=true'
 ```
@@ -74,7 +94,7 @@ Foreman remembers. A fix that failed shows up in the next review as "tried, didn
 
 <img src="docs/telegram.png" width="300" align="right" alt="Foreman in Telegram">
 
-Foreman can send every report to Telegram, with Apply and Rerun buttons under each proposed fix. Tap Apply on the couch, the fix runs on the server, the result comes back in the chat. No public URL and no extra container; Foreman polls Telegram from inside the one it already runs in.
+Foreman can send every report to Telegram, with Apply and Rerun buttons under each proposed fix (Rerun only, for a manual step). Tap Apply on the couch, the fix runs on the server, the result comes back in the chat. No public URL and no extra container; Foreman polls Telegram from inside the one it already runs in.
 
 Three steps, two minutes:
 
@@ -90,17 +110,6 @@ From then on, reports with findings arrive on their own. `/status` shows the lat
   <img src="docs/telegram.png" width="280" alt="Proposed fix with Apply and Rerun buttons">&nbsp;&nbsp;
   <img src="docs/telegram-applied.png" width="280" alt="Applied: docker restart postgres, with output">
 </p>
-
-## Meta models, and where each one sits
-
-| Role | Model | Why |
-| --- | --- | --- |
-| Chip (metrics) | Muse CLI, `muse exec` | Collects CPU, memory, disk, top processes and asks Muse for a first-pass health read. Local psutil fallback if Muse is unavailable. |
-| Reviewer | `muse-wonder-1.0` via Meta Model API | Reasons over today's metrics, a digest of the logs, and seven days of prior reports and fixes. Writes the report. |
-| The Fixer | `muse-spark-1.3` via Meta Model API | Fast and cheap per call. Proposes one executable fix per finding. |
-| Executor | shell, or `muse exec --trust-workspace` | Applies an approved fix. Nothing runs until Apply is pressed. |
-
-Both agents are Pydantic AI agents with structured output. One finding worth sharing: Meta Model API's native JSON mode (`response_format` with a JSON schema) drops fields that have default values from the returned object. The Reviewer's `findings` list came back empty even when the headline named three issues. The repo's `probe` command reproduces it. Both agents now use prompted output with validation and a retry guardrail instead, which fixed it.
 
 ## Built during the hackathon
 
@@ -118,7 +127,7 @@ There is no pre-existing codebase underneath it.
 ```bash
 docker compose logs -f foreman                      # watch each review land
 curl -X POST 'localhost:8000/api/tick?force=true'   # review now instead of waiting
-docker compose exec scheduler muse login            # one time: lets Chip use the Muse CLI instead of its local fallback
+docker compose exec scheduler sh /app/run_all.sh    # collect now; Chip's block ends with "_source": "muse" when the Muse CLI ran
 ```
 
 Compressed demo clock: set `FOREMAN_REVIEW_INTERVAL_MIN: "1"` in `docker-compose.yml` and the cycle plays out every minute.
@@ -193,7 +202,7 @@ foreman/
 
 **Review.** The Reviewer gets the metrics, the digest, and a history window: prior reports, open findings, applied and rejected fixes. It writes a status, headline, summary, per-finding evidence and impact, a trend tag for each finding, and marks which findings need a fix.
 
-**Fix.** For each finding marked `needs_fix`, The Fixer proposes a title, explanation, ordered steps with commands, risk, side effects, and rollback. On Rerun it also writes a "versus previous" note. It is told what kind of host it's writing for (`FOREMAN_HOST_KIND`): on a container host it gets the live list of running containers and uses `docker ps`, `docker logs`, `docker restart`, `docker inspect`; on a systemd host it uses `systemctl`. When the finding points at a machine it can't reach, it returns a single `echo MANUAL` step and explains what the admin has to do by hand.
+**Fix.** For each finding marked `needs_fix`, The Fixer proposes a title, explanation, ordered steps with commands, risk, side effects, and rollback. On Rerun it also writes a "versus previous" note. It is told what kind of host it's writing for (`FOREMAN_HOST_KIND`): on a container host it gets the live list of running containers and uses `docker ps`, `docker logs`, `docker restart`, `docker inspect`; on a systemd host it uses `systemctl`. When the finding points at a machine it can't reach, it returns a single `echo MANUAL` step and explains what the admin has to do by hand. Manual proposals show no Apply button, on the dashboard or in Telegram; only Rerun.
 
 **Guardrails in code, regardless of what the model says.** The Reviewer can't call a server healthy when a metric is over threshold, and must return at least one finding when it says warning or critical. The Fixer can't propose banned commands (`mkfs`, `iptables`, `passwd`, `dd` to a device, and so on), `rm` is only allowed under `/tmp`, `/var/tmp`, `/var/log`, and `/var/cache`, and it can never restart, stop, or kill Foreman's own containers (`foreman`, `health_db`, `health_scheduler`). A disallowed proposal triggers a retry with the reason; a Fixer failure never sinks the report.
 
@@ -231,6 +240,7 @@ FastAPI publishes the OpenAPI spec at `/openapi.json`.
 | --- | --- | --- |
 | `MODEL_API_KEY` | | Meta Model API key. Required. |
 | `MODEL_API_BASE_URL` | `https://api.meta.ai/v1` | OpenAI-compatible endpoint |
+| `META_API_KEY` | | Lets Chip run the Muse CLI on the server. Optional; psutil fallback without it. |
 | `REVIEWER_MODEL` | `muse-wonder-1.0` | |
 | `FIXER_MODEL` | `muse-spark-1.3` | |
 | `FOREMAN_MOCK` | `0` | `1` runs with local stand-in models, no key needed |
@@ -276,14 +286,14 @@ Output: `timestamp`, `host`, `system`, `search_paths`, `hours_searched`, `summar
 
 ### Dummy logs
 
-`server_status_dummy_logs.py` writes realistic JSON log lines (health checks, resource snapshots, HTTP requests, service events) with short random outages. `--seed` makes a run repeatable; `--count`, `--interval` and `--start` control volume and timing. The compose file mounts `./demo-logs` into the scheduler, so regenerating the file is enough; no rebuild.
+`server_status_dummy_logs.py` writes realistic JSON log lines (health checks, resource snapshots, HTTP requests, service events) with short random outages. `--seed` makes a run repeatable; `--count`, `--interval` and `--start` control volume and timing. Seed 7 at 100 lines is a postgres outage; seed 166 at 60 lines is a quiet hour. The compose file mounts `./demo-logs` into the scheduler, so regenerating the file is enough; no rebuild.
 
 ## Known limits
 
 - Fixes run from inside the Foreman container. With the Docker socket mounted (compose does this) it can restart any container on the host. It cannot restart a bare-metal service on the host, and `/proc/sys` is read-only to it, so the Fixer is told not to propose sysctl or cache-drop fixes on a container host. On a systemd host, set `FOREMAN_HOST_KIND=systemd` and run Foreman as a sidecar.
 - The Fixer only acts on this host. Findings that come from logs about other machines (the demo logs mention `web-01`, `web-02`) get a manual step, not a command.
 - Some system logs are root-only. Chuck skips files it can't read. The compose file mounts `/var/log/asl` read-only for macOS hosts; on Linux, mount `/var/log` the same way.
-- Chip's Muse CLI call needs a Muse login inside the scheduler container (`docker compose exec scheduler muse login`). Without it, Chip falls back to local metrics and the pipeline still runs.
+- Chip's Muse CLI call needs `META_API_KEY` in `.env` (compose passes it into the scheduler container). Without it, Chip falls back to psutil metrics and the pipeline still runs; the report's `_source` field says which path it took.
 
 ## License
 

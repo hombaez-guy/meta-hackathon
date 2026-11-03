@@ -83,6 +83,8 @@ def _esc(s: str) -> str:
 def _fix_buttons(fix: FixProposal) -> list[list[dict]]:
     if fix.state != "proposed":
         return []
+    if fix.is_manual:  # nothing to run; the admin can still ask for a different approach
+        return [[{"text": "Rerun", "callback_data": f"rerun:{fix.fix_id}"}]]
     return [[
         {"text": "Apply", "callback_data": f"apply:{fix.fix_id}"},
         {"text": "Rerun", "callback_data": f"rerun:{fix.fix_id}"},
@@ -112,10 +114,15 @@ def send_report(report: Report) -> None:
     for f in v.findings:
         if not f.fix:
             continue
-        steps = "\n".join(f"{i + 1}. <code>{_esc(s.command)}</code>" for i, s in enumerate(f.fix.steps[:5]))
+        if f.fix.is_manual:
+            steps = "\n".join(f"{i + 1}. {_esc(s.description)}" for i, s in enumerate(f.fix.steps[:5]))
+            head = "<b>Manual step (nothing to run here):</b>"
+        else:
+            steps = "\n".join(f"{i + 1}. <code>{_esc(s.command)}</code>" for i, s in enumerate(f.fix.steps[:5]))
+            head = f"<b>Proposed fix:</b> {_esc(f.fix.title)}  (risk {_esc(f.fix.risk)})"
         msg = (
             f"<b>{_esc(f.title)}</b>  [{_esc(f.severity)}]\n{_esc(f.evidence)}\n\n"
-            f"<b>Proposed fix:</b> {_esc(f.fix.title)}  (risk {_esc(f.fix.risk)})\n{_esc(f.fix.explanation)}\n{steps}"
+            f"{head}\n{_esc(f.fix.explanation)}\n{steps}"
         )
         if f.fix.rollback:
             msg += f"\n<i>Rollback: {_esc(f.fix.rollback)}</i>"
@@ -150,7 +157,7 @@ def _handle_callback(cb: dict) -> None:
             _call("sendMessage", chat_id=cid, text=text, parse_mode="HTML")
         elif action == "rerun":
             new = asyncio.run(rerun_fix(fix_id))
-            steps = "\n".join(f"{i + 1}. <code>{_esc(s.command)}</code>" for i, s in enumerate(new.steps[:5]))
+            steps = "\n".join(f"{i + 1}. " + (_esc(s.description) if new.is_manual else f"<code>{_esc(s.command)}</code>") for i, s in enumerate(new.steps[:5]))
             text = (f"\U0001F501 <b>New proposal (attempt {new.attempt}):</b> {_esc(new.title)}  (risk {_esc(new.risk)})\n"
                     f"{_esc(new.explanation)}\n{steps}")
             if new.conflicts_with_previous:

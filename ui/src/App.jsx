@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { api } from './api.js'
 
 const fmt = (t) => (t || '').slice(0, 16).replace('T', ' ')
+const isManual = (fix) => fix.steps.length > 0 && fix.steps.every((s) => s.command.trim() === 'echo MANUAL')
 const RANGES = [['6h', '6h'], ['24h', '24h'], ['7d', '7d'], ['all', 'All']]
 const RANGE_HOURS = { '6h': 6, '24h': 24, '7d': 168, all: 0 }
 // Axis label: time of day when the window is short, date + time once it spans days
@@ -130,15 +131,16 @@ export default function App() {
                 <div className="sol-fix">
                   <div className="sol-h"><b>Solution: {f.fix.title}</b><span className={`state ${f.fix.state}`}>{f.fix.state} · risk {f.fix.risk} · attempt {f.fix.attempt}</span></div>
                   <div>{f.fix.explanation}</div>
-                  <ol>{f.fix.steps.map((s, i) => <li key={i}>{s.description} <code>{s.command}</code></li>)}</ol>
+                  {isManual(f.fix) && <div className="muted warn"><span>Manual</span> Nothing to run from here. Do the steps below by hand, or Rerun for a different approach.</div>}
+                  <ol>{f.fix.steps.map((s, i) => <li key={i}>{s.description} {!isManual(f.fix) && <code>{s.command}</code>}</li>)}</ol>
                   {f.fix.side_effects?.length > 0 && <div className="muted"><span>Side effects</span> {f.fix.side_effects.join('; ')}</div>}
                   {f.fix.rollback && <div className="muted"><span>Rollback</span> {f.fix.rollback}</div>}
                   {f.fix.conflicts_with_previous && <div className="muted warn"><span>Vs previous</span> {f.fix.conflicts_with_previous}</div>}
                   {f.fix.result && <details><summary>Execution output</summary><pre>{f.fix.result.slice(-1200)}</pre></details>}
                   <div className="actions">
-                    <button className="primary" disabled={f.fix.state !== 'proposed' || busy === f.fix.fix_id} onClick={() => apply(f.fix)}>
+                    {!isManual(f.fix) && <button className="primary" disabled={f.fix.state !== 'proposed' || busy === f.fix.fix_id} onClick={() => apply(f.fix)}>
                       {busy === f.fix.fix_id ? 'Working…' : 'Apply'}
-                    </button>
+                    </button>}
                     <button disabled={f.fix.state === 'applied' || busy === f.fix.fix_id} onClick={() => rerun(f.fix)}>Rerun</button>
                   </div>
                 </div>

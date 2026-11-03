@@ -84,7 +84,8 @@ TEMPLATE = r"""<!doctype html>
     <div class="fh"><span class="t">Proposed fix: {{ f.fix.title }}</span>
       <span><span class="state {{ f.fix.state }}">{{ f.fix.state }}</span> &nbsp;<span class="sev">risk {{ f.fix.risk }} · attempt {{ f.fix.attempt }}</span></span></div>
     <div>{{ f.fix.explanation }}</div>
-    <ol>{% for s in f.fix.steps %}<li>{{ s.description }} <code>{{ s.command }}</code></li>{% endfor %}</ol>
+    {% if f.fix.is_manual %}<div class="sub">Manual step. Nothing to run from here.</div>{% endif %}
+    <ol>{% for s in f.fix.steps %}<li>{{ s.description }} {% if not f.fix.is_manual %}<code>{{ s.command }}</code>{% endif %}</li>{% endfor %}</ol>
     {% if f.fix.side_effects %}<div class="sub">Side effects: {{ f.fix.side_effects|join('; ') }}</div>{% endif %}
     {% if f.fix.rollback %}<div class="sub">Rollback: {{ f.fix.rollback }}</div>{% endif %}
     {% if f.fix.conflicts_with_previous %}<div class="sub">Versus previous proposal: {{ f.fix.conflicts_with_previous }}</div>{% endif %}

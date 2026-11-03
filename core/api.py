@@ -197,6 +197,8 @@ def apply(fix_id: str):
         return apply_fix(fix_id).model_dump()
     except KeyError:
         raise HTTPException(404, fix_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.post("/api/fixes/{fix_id}/rerun")

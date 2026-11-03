@@ -211,6 +211,14 @@ def fixer_guardrails(ctx: RunContext[FixDeps], fix: FixProposal) -> FixProposal:
     fix.attempt = len(ctx.deps.rejected) + 1
     fix.state = "proposed"
     for i, step in enumerate(fix.steps, 1):
+        m = re.match(r"\s*echo\s+MANUAL\b(.*)$", step.command, re.S)
+        if m:  # instructions belong in the description; the command is just the marker
+            extra = m.group(1).strip(" -:;")
+            if extra and extra not in step.description:
+                step.description = f"{step.description.rstrip('.')}. {extra}"
+            step.command = "echo MANUAL"
+            step.risk, step.reversible = "low", True
+            continue
         reason = _check_command(step.command)
         if reason:
             log.warning("fixer step %d rejected (%s): %s", i, reason, step.command[:120])
