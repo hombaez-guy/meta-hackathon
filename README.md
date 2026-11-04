@@ -39,10 +39,10 @@ Both agents are Pydantic AI agents with structured output. One finding worth sha
 
 ![How Foreman works](docs/how-it-works.png)
 
-Six steps, two of them AI, one of them you.
+Six steps. Three use AI (one local, two frontier), one is you.
 
 1. **Your server** runs as usual. Foreman sits next to it.
-2. **Collect.** Every 30 minutes two small scripts grab the numbers (CPU, memory, disk) and the newest log lines. No AI here, just facts.
+2. **Collect.** Every 30 minutes Chip grabs the numbers (CPU, memory, disk) and runs the Muse CLI locally for a first read; Chuck grabs the newest log lines with no model at all. Facts first.
 3. **Review.** The Reviewer agent reads today against the last seven days and writes a one-page report: what's wrong, whether it's new or recurring, how bad.
 4. **Propose a fix.** For each finding that needs action, the Fixer agent writes the exact commands, the risk, the side effects, and how to undo it.
 5. **You decide.** On the dashboard or on your phone. Tap Apply, or Rerun for a different approach.
